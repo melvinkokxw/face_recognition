@@ -171,6 +171,7 @@ class FrameProcessor:
         self.MAX_DISTANCE = 3500
 
     def recognize(self, frame):
+        frame = cv2.flip(frame, 1)
         for face, (x, y, w, h) in self.face_extractor.extract_faces(frame):
             face_flattened = np.array(Image.fromarray(face)).flatten()
             min_class, min_distance, min_class_emo, min_distance_emo = self.classifier.predict_face(face_flattened)
@@ -193,7 +194,6 @@ class FaceExtractor:
         self.RESIZE_FACTOR = 4
 
     def extract_faces(self, frame):
-        frame = cv2.flip(frame, 1)
         resized_width, resized_height = (100, 100)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)        
         gray_resized = cv2.resize(gray, (int(gray.shape[1]/self.RESIZE_FACTOR), int(gray.shape[0]/self.RESIZE_FACTOR)))        
@@ -204,6 +204,7 @@ class FaceExtractor:
             minSize=(30, 30),
             flags=cv2.CASCADE_SCALE_IMAGE
         )
+        output = []
         for i in range(len(faces)):
             face_i = faces[i]
             x = face_i[0] * self.RESIZE_FACTOR
@@ -212,5 +213,6 @@ class FaceExtractor:
             h = face_i[3] * self.RESIZE_FACTOR
             face = gray[y:y+h, x:x+w]
             face_resized = cv2.resize(face, (resized_width, resized_height))
+            output.append((face_resized, (x, y, w, h)))
 
-        return face_resized, (x, y, w, h)
+        return output
