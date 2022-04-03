@@ -1,9 +1,9 @@
-from eigenfaces import FaceClassifier
+from eigenfaces import FrameProcessor
 import numpy as np
 import cv2
 
 if __name__ == "__main__":
-    recognizer = FaceClassifier()
+    recognizer = FrameProcessor()
 
     video_capture = cv2.VideoCapture(0)
     while True:
