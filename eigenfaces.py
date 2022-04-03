@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
+
 class DataSet:
     def __init__(self, dataset_path):
         self.images = []
@@ -39,7 +40,8 @@ class DataSet:
 
                 self.image_labels.append(class_name)
 
-class EigenFaces:
+
+class FaceClassifier:
     def __init__(self):
         self.images = None
         self.mean_image = None
@@ -155,18 +157,42 @@ class EigenFaces:
 
         return V, mean_X
 
-class FaceClassifier:
+
+class FrameProcessor:
     def __init__(self):
         self.dataset = DataSet("data")
         self.dataset_emotion = DataSet("data_emotion")
-        self.classifier = EigenFaces()
+        self.classifier = FaceClassifier()
         self.classifier.load_dataset(self.dataset, self.dataset_emotion)
         self.classifier.train()
 
-        self.RESIZE_FACTOR = 4
+        self.face_extractor = FaceExtractor()
+
         self.MAX_DISTANCE = 3500
 
     def recognize(self, frame):
+        for face, (x, y, w, h) in self.face_extractor.extract_faces(frame):
+            face_flattened = np.array(Image.fromarray(face)).flatten()
+            min_class, min_distance, min_class_emo, min_distance_emo = self.classifier.predict_face(face_flattened)
+
+            if min_distance > self.MAX_DISTANCE:
+                min_class = "Unknown Person"
+            if min_distance_emo > self.MAX_DISTANCE:
+                min_class_emo = "Unknown Emotion"
+
+            cv2.putText(frame, f"{min_class} - {min_class_emo}", (x + 20, y + h + 45), cv2.FONT_HERSHEY_PLAIN, 2,
+            (0, 255, 0), 2)
+
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        return frame
+
+
+class FaceExtractor:
+    def __init__(self):
+        self.RESIZE_FACTOR = 4
+
+    def extract_faces(self, frame):
         frame = cv2.flip(frame, 1)
         resized_width, resized_height = (100, 100)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)        
@@ -186,17 +212,5 @@ class FaceClassifier:
             h = face_i[3] * self.RESIZE_FACTOR
             face = gray[y:y+h, x:x+w]
             face_resized = cv2.resize(face, (resized_width, resized_height))
-            face_flattened = np.array(Image.fromarray(face_resized)).flatten()
-            min_class, min_distance, min_class_emo, min_distance_emo = self.classifier.predict_face(face_flattened)
 
-            if min_distance > self.MAX_DISTANCE:
-                min_class = "Unknown Person"
-            if min_distance_emo > self.MAX_DISTANCE:
-                min_class_emo = "Unknown Emotion"
-
-            cv2.putText(frame, f"{min_class} - {min_class_emo}", (x + 20, y + h + 45), cv2.FONT_HERSHEY_PLAIN, 2,
-            (0, 255, 0), 2)
-
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        return frame
+        return face_resized, (x, y, w, h)
